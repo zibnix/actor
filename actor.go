@@ -61,7 +61,7 @@ func Teach[I, O any](actor *Actor, action Action[I, O]) func(I) <-chan O {
 	actor.wg.Add(1)
 	go func() {
 		defer actor.wg.Done()
-		act[I, O](actor, action, c)
+		act(actor, action, c)
 	}()
 
 	return func(i I) <-chan O {
@@ -77,7 +77,6 @@ func Teach[I, O any](actor *Actor, action Action[I, O]) func(I) <-chan O {
 				Ochan: ochan,
 			}:
 			case <-actor.quit:
-				return
 			}
 		}()
 
@@ -100,7 +99,6 @@ func act[I, O any](actor *Actor, action Action[I, O], c chan struct {
 				select {
 				case s.Ochan <- o:
 				case <-actor.quit:
-					return
 				}
 			}()
 		case <-actor.quit:
