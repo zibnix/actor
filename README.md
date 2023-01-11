@@ -1,4 +1,4 @@
-# Acctor
+# Actor
 A generic lib for doing stuff in isolation via an actor-ish model.
 
 ### Why?
