@@ -32,7 +32,7 @@ type Action[I, O any] interface {
 
 // The ActionFunc type is an adapter to allow the use of
 // ordinary functions as Actions. If f is a function
-// with the appropriate signature, ActionFunc[T](f) is an
+// with the appropriate signature, ActionFunc[I, O](f) is an
 // Action that calls f.
 type ActionFunc[I, O any] func(i I) O
 
