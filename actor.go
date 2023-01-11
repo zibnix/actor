@@ -39,38 +39,45 @@ const (
 )
 
 // Teach an *Actor how to perform a read act.
+// The pkg level Teach functions aren't parallel safe with each other or an
+// Actor.Shutdown call on the same *Actor.
 func TeachRead[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
 	return Teach(actor, act, Read)
 }
 
 // Teach an *Actor how to perform a write act.
+// The pkg level Teach functions aren't parallel safe with each other or an
+// Actor.Shutdown call on the same *Actor.
 func TeachWrite[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
 	return Teach(actor, act, Write)
 }
 
-// The pkg level Teach functions aren't parallel safe with each other or an
-// Actor.Shutdown call on the same *Actor.
-// Teach functions aren't methods because methods cannot have type params, and each
-// Act should be able to supply its own types.
-// Call a Teach function once for each act the actor should know how to perform.
+// Teach functions launch an actor that runs the provided Act in isolation.
+// You can call Teach functions more than once for the same Act, which would
+// give the ability to have multiple readers and writers, if you need.
+// You would still need to keep track of the returned functions, and spread
+// calls across them.
 // The returned function has the ability to interact with the actor by submitting
 // a type, and receiving a read-only chan on which to listen for the response.
-// The returned function does not block when called, and does not need to be
-// called with the `go` keyword.* (see below)
 // The returned function is parallel safe with other returns from Teach.
 // Reads can occur in parallel with each other.
 // Writes are excluded from occurring in parallel with other writes and reads.
+// Teach functions aren't methods because methods cannot have type params, and
+// each Act should be able to supply its own types.
 //
-// * The returned function could itself return a chan and the function to do the
-// communication with the actor, rather than starting a goroutine for that
-// communication itself. This would allow the caller to control when/if a new
-// goroutine needs to be run for communication, which would perhaps be more
-// in line with recommendations for API behavior. As it is now, the signature is
-// slightly simpler just returning the chan, and this enables reading from the
-// chan directly without creating a named variable in importing code. If the
-// potential extra overhead of that automatically started goroutine is an issue,
-// and you'd rather have the option of blocking on the write in your own
-// goroutine, feel free to let me know or fork.
+// Currently, the returned function does not block when called, and does not need
+// to be called with the `go` keyword.
+//
+// Instead, the returned function could itself return a chan and a function to do
+// the communication with the actor, rather than starting a goroutine for that
+// communication. This would allow the caller to control when/if a new goroutine
+// needs to be run for communication, which would perhaps be more in line with
+// recommendations for API behavior.
+// As it is now, the signature is slightly simpler just returning the chan, and
+// this enables reading from the chan directly without creating a named variable
+// in importing code. If the potential extra overhead of that automatically
+// started goroutine is an issue, and you'd rather have the option of blocking on
+// the write in your own goroutine, feel free to let me know or fork.
 func Teach[I, O any](actor *Actor, act Act[I, O], rw RW) func(I) <-chan O {
 	if actor.quit == nil {
 		actor.quit = make(chan struct{})
