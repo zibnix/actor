@@ -46,8 +46,6 @@ func (f ActionFunc[I, O]) Act(i I) O {
 // a type, and receiving a read-only chan on which to listen for the response.
 // The returned function is parallel safe with other returns from Teach, but these
 // returns are really the only functions in this pkg that make that promise.
-// The <-chan O here should be read from every time, or you will get orphaned
-// goroutines waiting to write.
 func Teach[I, O any](actor *Actor, action Action[I, O]) func(I) <-chan O {
 	if actor.quit == nil {
 		actor.quit = make(chan struct{})
@@ -65,7 +63,9 @@ func Teach[I, O any](actor *Actor, action Action[I, O]) func(I) <-chan O {
 	}()
 
 	return func(i I) <-chan O {
-		ochan := make(chan O)
+		// buffered so that the actor can write without blocking
+		// or spinning up another goroutine
+		ochan := make(chan O, 1)
 
 		go func() {
 			select {
@@ -95,12 +95,7 @@ func act[I, O any](actor *Actor, action Action[I, O], c chan struct {
 			o := action.Act(s.I)
 			actor.actionlk.Unlock()
 
-			go func() {
-				select {
-				case s.Ochan <- o:
-				case <-actor.quit:
-				}
-			}()
+			s.Ochan <- o
 		case <-actor.quit:
 			return
 		}
