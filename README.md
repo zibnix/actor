@@ -51,9 +51,18 @@ them wherever you want from here:
 ```go
 var a actor.Actor
 
-m := make(Map[int, int])
+m := make(Map[K, V])
 
 get := actor.TeachRead(&a, m.Get)
 put := actor.TeachWrite(&a, m.Put)
 del := actor.TeachWrite(&a, m.Del)
+
+// put does not block, and we don't care about its return
+put(KeyVal[K, V]{x, y})
+
+// sometime later... do the read and block on its return
+v := <-get(k)
+
+// del does not block, and we don't care about its return
+del(k)
 ```
