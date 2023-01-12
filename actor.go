@@ -12,17 +12,22 @@ import "sync"
 //	read := actor.Reader(&a, rfunc)
 //	write := actor.Writer(&a, wfunc)
 type Actor struct {
-	actlk sync.RWMutex
-	wg    sync.WaitGroup
-	quit  chan struct{}
+	actlk    sync.RWMutex
+	wg       sync.WaitGroup
+	initOnce sync.Once
+	quit     chan struct{}
 }
 
-// Not parallel safe with itself or a Reader/Writer/Teach call with the same *Actor.
 func (a *Actor) Shutdown() {
-	if a.quit != nil {
-		close(a.quit)
-	}
+	a.init()
+	close(a.quit)
 	a.wg.Wait()
+}
+
+func (a *Actor) init() {
+	a.initOnce.Do(func() {
+		a.quit = make(chan struct{})
+	})
 }
 
 // An act. You define the acts on some shared data in terms
@@ -39,32 +44,30 @@ const (
 )
 
 // Teach an *Actor how to perform a read act.
-// The pkg level Reader/Writer/Teach functions aren't parallel safe with each
-// other or an Actor.Shutdown call on the same *Actor.
 func Reader[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
 	return Teach(actor, act, Read)
 }
 
 // Teach an *Actor how to perform a write act.
-// The pkg level Reader/Writer/Teach functions aren't parallel safe with each
-// other or an Actor.Shutdown call on the same *Actor.
 func Writer[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
 	return Teach(actor, act, Write)
 }
 
 // Reader/Writer/Teach functions launch an actor that runs the provided Act in
 // isolation.
-// You can call Teach functions more than once for the same Act, which would
-// give the ability to have multiple readers/writers for the same Act, if needed.
+// You can call Reader/Writer/Teach functions more than once for the same Act,
+// which would give the ability to have multiple readers/writers for the same
+// Act, if needed.
 // You would still need to keep track of the returned functions, and spread
 // calls across them.
 // The returned function has the ability to interact with the actor by submitting
 // a type, and receiving a read-only chan on which to listen for the response.
-// The returned function is parallel safe with other returns from Teach.
+// The returned function is parallel safe with other returns from
+// Reader/Writer/Teach.
 // Reads can occur in parallel with each other.
 // Writes are excluded from occurring in parallel with other writes and reads.
-// Teach functions aren't methods because methods cannot have type params, and
-// each Act should be able to supply its own types.
+// Reader/Writer/Teach functions aren't methods because methods cannot have type
+// params, and each Act should be able to supply its own types.
 //
 // Currently, the returned function does not block when called, and does not need
 // to be called with the `go` keyword.
@@ -80,9 +83,7 @@ func Writer[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
 // started goroutine is an issue, and you'd rather have the option of blocking on
 // the write in your own goroutine, feel free to let me know or fork.
 func Teach[I, O any](actor *Actor, act Act[I, O], rw RW) func(I) <-chan O {
-	if actor.quit == nil {
-		actor.quit = make(chan struct{})
-	}
+	actor.init()
 
 	c := make(chan struct {
 		I     I
