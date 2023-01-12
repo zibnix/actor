@@ -6,18 +6,18 @@ import "sync"
 //
 //	var a actor.Actor
 //
-// Teach the *Actor about various acts it should know how
-// to perform in isolation with the pkg level Teach function.
+// Teach the *Actor about various acts it should know how to
+// perform with the pkg level Reader/Writer functions.
 //
-//	read := TeachRead(&a, rfunc)
-//	write := TeachWrite(&a, wfunc)
+//	read := actor.Reader(&a, rfunc)
+//	write := actor.Writer(&a, wfunc)
 type Actor struct {
 	actlk sync.RWMutex
 	wg    sync.WaitGroup
 	quit  chan struct{}
 }
 
-// Not parallel safe with itself or a Teach call with the same *Actor.
+// Not parallel safe with itself or a Reader/Writer/Teach call with the same *Actor.
 func (a *Actor) Shutdown() {
 	if a.quit != nil {
 		close(a.quit)
@@ -39,20 +39,21 @@ const (
 )
 
 // Teach an *Actor how to perform a read act.
-// The pkg level Teach functions aren't parallel safe with each other or an
-// Actor.Shutdown call on the same *Actor.
+// The pkg level Reader/Writer/Teach functions aren't parallel safe with each
+// other or an Actor.Shutdown call on the same *Actor.
 func Reader[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
 	return Teach(actor, act, Read)
 }
 
 // Teach an *Actor how to perform a write act.
-// The pkg level Teach functions aren't parallel safe with each other or an
-// Actor.Shutdown call on the same *Actor.
+// The pkg level Reader/Writer/Teach functions aren't parallel safe with each
+// other or an Actor.Shutdown call on the same *Actor.
 func Writer[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
 	return Teach(actor, act, Write)
 }
 
-// Teach functions launch an actor that runs the provided Act in isolation.
+// Reader/Writer/Teach functions launch an actor that runs the provided Act in
+// isolation.
 // You can call Teach functions more than once for the same Act, which would
 // give the ability to have multiple readers/writers for the same Act, if needed.
 // You would still need to keep track of the returned functions, and spread
