@@ -53,9 +53,9 @@ var a actor.Actor
 
 m := make(Map[K, V])
 
-get := actor.TeachRead(&a, m.Get)
-put := actor.TeachWrite(&a, m.Put)
-del := actor.TeachWrite(&a, m.Del)
+get := actor.Read(&a, m.Get)
+put := actor.Write(&a, m.Put)
+del := actor.Write(&a, m.Del)
 
 // put does not block, and we don't care about its return
 put(KeyVal[K, V]{x, y})

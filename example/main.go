@@ -49,9 +49,9 @@ func main() {
 	m := make(Map[int, int])
 
 	// these put and get functions are safe for parallel use.
-	get := actor.TeachRead(&a, m.Get)
-	put := actor.TeachWrite(&a, m.Put)
-	del := actor.TeachWrite(&a, m.Del)
+	get := actor.Read(&a, m.Get)
+	put := actor.Write(&a, m.Put)
+	del := actor.Write(&a, m.Del)
 
 	// Acts do not block, they create a goroutine that blocks
 
