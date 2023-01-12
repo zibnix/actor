@@ -34,22 +34,22 @@ type Act[I, O any] func(I) O
 type RW int
 
 const (
-	Reader RW = iota
-	Writer
+	Read RW = iota
+	Write
 )
 
 // Teach an *Actor how to perform a read act.
 // The pkg level Teach functions aren't parallel safe with each other or an
 // Actor.Shutdown call on the same *Actor.
-func Read[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
-	return Teach(actor, act, Reader)
+func Reader[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
+	return Teach(actor, act, Read)
 }
 
 // Teach an *Actor how to perform a write act.
 // The pkg level Teach functions aren't parallel safe with each other or an
 // Actor.Shutdown call on the same *Actor.
-func Write[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
-	return Teach(actor, act, Writer)
+func Writer[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
+	return Teach(actor, act, Write)
 }
 
 // Teach functions launch an actor that runs the provided Act in isolation.
@@ -123,10 +123,10 @@ func action[I, O any](actor *Actor, act Act[I, O], rw RW, c chan struct {
 	var lock, unlock func()
 
 	switch rw {
-	case Reader:
+	case Read:
 		lock = actor.actlk.RLock
 		unlock = actor.actlk.RUnlock
-	case Writer:
+	case Write:
 		fallthrough
 	default:
 		lock = actor.actlk.Lock

@@ -48,16 +48,17 @@ func main() {
 
 	m := make(Map[int, int])
 
-	// these put and get functions are safe for parallel use.
-	get := actor.Read(&a, m.Get)
-	put := actor.Write(&a, m.Put)
-	del := actor.Write(&a, m.Del)
+	// these put and get functions are safe for parallel use
+	// funcs returned by reader/writer do not block
+	// they create a goroutine that blocks
+	get := actor.Reader(&a, m.Get)
+	put := actor.Writer(&a, m.Put)
+	del := actor.Writer(&a, m.Del)
 
-	// Acts do not block, they create a goroutine that blocks
-
-	// Acts return a chan that you block on while reading from
-	// or safely ignore if, like with put and del, the return
-	// is meaningless
+	// funcs returned by reader/writer return a <-chan
+	// block on a read from the chan to get the value
+	// or safely ignore it if, like with put and del,
+	// the return is meaningless
 	for i := 1; i < calls; i++ {
 		// initialize the map vals to -1
 		// so deletes are more obvious
