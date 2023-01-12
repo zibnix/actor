@@ -54,7 +54,7 @@ func TeachWrite[I, O any](actor *Actor, act Act[I, O]) func(I) <-chan O {
 
 // Teach functions launch an actor that runs the provided Act in isolation.
 // You can call Teach functions more than once for the same Act, which would
-// give the ability to have multiple readers and writers, if you need.
+// give the ability to have multiple readers/writers for the same Act, if needed.
 // You would still need to keep track of the returned functions, and spread
 // calls across them.
 // The returned function has the ability to interact with the actor by submitting
