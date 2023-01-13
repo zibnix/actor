@@ -12,10 +12,10 @@ import "sync"
 //	read := actor.Reader(&a, rfunc)
 //	write := actor.Writer(&a, wfunc)
 type Actor struct {
-	actlk    sync.RWMutex
-	wg       sync.WaitGroup
-	initOnce sync.Once
-	quit     chan struct{}
+	lk   sync.RWMutex
+	wg   sync.WaitGroup
+	o    sync.Once
+	quit chan struct{}
 }
 
 func (a *Actor) Shutdown() {
@@ -25,7 +25,7 @@ func (a *Actor) Shutdown() {
 }
 
 func (a *Actor) init() {
-	a.initOnce.Do(func() {
+	a.o.Do(func() {
 		a.quit = make(chan struct{})
 	})
 }
@@ -39,8 +39,8 @@ type Act[I, O any] func(I) O
 type RW int
 
 const (
-	Read RW = iota
-	Write
+	Write RW = iota
+	Read
 )
 
 // Teach an *Actor how to perform a read act.
@@ -118,21 +118,14 @@ func Teach[I, O any](actor *Actor, act Act[I, O], rw RW) func(I) <-chan O {
 	}
 }
 
-func action[I, O any](actor *Actor, act Act[I, O], rw RW, c chan struct {
+func action[I, O any](a *Actor, act Act[I, O], rw RW, c chan struct {
 	I     I
 	Ochan chan O
 }) {
-	var lock, unlock func()
-
-	switch rw {
-	case Read:
-		lock = actor.actlk.RLock
-		unlock = actor.actlk.RUnlock
-	case Write:
-		fallthrough
-	default:
-		lock = actor.actlk.Lock
-		unlock = actor.actlk.Unlock
+	lock, unlock := a.lk.Lock, a.lk.Unlock
+	if rw == Read {
+		lock = a.lk.RLock
+		unlock = a.lk.RUnlock
 	}
 
 	for {
@@ -143,7 +136,7 @@ func action[I, O any](actor *Actor, act Act[I, O], rw RW, c chan struct {
 			unlock()
 
 			s.Ochan <- o
-		case <-actor.quit:
+		case <-a.quit:
 			return
 		}
 	}
